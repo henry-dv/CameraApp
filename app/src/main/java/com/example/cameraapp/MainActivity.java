@@ -60,7 +60,6 @@ public class MainActivity extends AppCompatActivity {
 
         // show kram from directory
         directory_path = Environment.getExternalStorageDirectory().toString() + "/" + Environment.DIRECTORY_PICTURES + "/" + getResources().getString(R.string.app_name);
-        Log.d("Info", directory_path);
         updatePreviewOfImages();
         FloatingActionButton fab = findViewById(R.id.floatingActionButton);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -144,10 +143,8 @@ public class MainActivity extends AppCompatActivity {
         if (number_of_images > files.length) {
             flexlayout.removeAllViews();
             image_counter = 0;
-            Log.e("Info", "image_counter=" + String.valueOf(image_counter));
         }
         for (image_counter = image_counter; image_counter < files.length; image_counter++) {
-            Log.e("Info", files[image_counter].getAbsolutePath());
             final String image_path = files[image_counter].getAbsolutePath();
             final ImageView imageView = new ImageView(getApplicationContext());
             Uri localUri = Uri.fromFile(files[image_counter].getAbsoluteFile());
