@@ -3,11 +3,13 @@ package com.example.cameraapp;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
+import androidx.recyclerview.widget.RecyclerView;
 
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
@@ -18,8 +20,13 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
+import com.google.android.flexbox.FlexDirection;
+import com.google.android.flexbox.FlexboxLayout;
+import com.google.android.flexbox.FlexboxLayoutManager;
+import com.google.android.flexbox.JustifyContent;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.io.File;
@@ -27,11 +34,17 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Date;
 
 public class MainActivity extends AppCompatActivity {
 
     private File imageFile;
+    private int image_counter = 0;
+    com.google.android.flexbox.FlexboxLayout flexlayout;
+    String directory_path;
+    int number_of_images = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,27 +52,16 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
-        LinearLayout layout = (LinearLayout) findViewById(R.id.linearlayout1);
+        flexlayout = (FlexboxLayout) findViewById(R.id.flexbox1);
 
         // for tests purposes only because Android does not allow the app access to storage area which outside the app
         StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
         StrictMode.setVmPolicy(builder.build());
 
         // show kram from directory
-        String path = Environment.getExternalStorageDirectory().toString() + "/" + Environment.DIRECTORY_PICTURES + "/" + getResources().getString(R.string.app_name);
-        Log.d("Info", path);
-        File directory = new File(path);
-        File[] files = directory.listFiles();
-        for (int i=0; i < files.length; i++) {
-            Log.e("Info", files[i].getName());
-            final ImageView imageView = new ImageView(getApplicationContext());
-            Uri localUri = Uri.fromFile(files[i].getAbsoluteFile());
-            imageView.setImageURI(localUri);
-            imageView.setLayoutParams(new android.view.ViewGroup.LayoutParams(260,300));
-            imageView.setMaxHeight(20);
-            imageView.setMaxWidth(40);
-            layout.addView(imageView);
-        }
+        directory_path = Environment.getExternalStorageDirectory().toString() + "/" + Environment.DIRECTORY_PICTURES + "/" + getResources().getString(R.string.app_name);
+        Log.d("Info", directory_path);
+        updatePreviewOfImages();
         FloatingActionButton fab = findViewById(R.id.floatingActionButton);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -78,9 +80,22 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        Intent iGoToFullScreen = new Intent(this, FullscreenActivity.class);
-        iGoToFullScreen.putExtra("picture", imageFile);
-        startActivity(iGoToFullScreen);
+        if (imageFile.length() != 0) {
+            Intent iGoToFullScreen = new Intent(this, FullscreenActivity.class);
+            iGoToFullScreen.putExtra("picture", imageFile);
+            startActivity(iGoToFullScreen);
+        }
+        else {
+            imageFile.delete();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+
+        updatePreviewOfImages();
     }
 
     private void cameraIntent(File imageFile) {
@@ -116,6 +131,45 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void updatePreviewOfImages() {
+        File directory = new File(directory_path);
+        File[] files = directory.listFiles();
 
+        Arrays.sort(files, new Comparator<File>(){
+            public int compare(File f1, File f2)
+            {
+                return Long.valueOf(f1.lastModified()).compareTo(f2.lastModified());
+            } });
+
+        if (number_of_images > files.length) {
+            flexlayout.removeAllViews();
+            image_counter = 0;
+            Log.e("Info", "image_counter=" + String.valueOf(image_counter));
+        }
+        for (image_counter = image_counter; image_counter < files.length; image_counter++) {
+            Log.e("Info", files[image_counter].getAbsolutePath());
+            final String image_path = files[image_counter].getAbsolutePath();
+            final ImageView imageView = new ImageView(getApplicationContext());
+            Uri localUri = Uri.fromFile(files[image_counter].getAbsoluteFile());
+            imageView.setImageURI(localUri);
+            imageView.setLayoutParams(new android.view.ViewGroup.LayoutParams(270, 310));
+            imageView.setMaxHeight(320);
+            imageView.setMaxWidth(280);
+            imageView.setPadding(0,15,0,0);
+            imageView.setOnClickListener(new View.OnClickListener() {
+                                             @Override
+                                             public void onClick(View v) {
+                                                 File imageFile = new File(image_path);
+                                                 Intent intent = new Intent();
+                                                 intent.setClass(getApplicationContext(), FullscreenActivity.class);
+                                                 intent.putExtra("picture", imageFile);
+                                                 startActivity(intent);
+                                             }
+                                         }
+            );
+            flexlayout.addView(imageView);
+        }
+        number_of_images = files.length;
+    }
 
 }
