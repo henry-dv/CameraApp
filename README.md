@@ -7,4 +7,4 @@ This app is part of a students project to learn App Development. It has the foll
 - delete the picture
 
 ## Screenshot
-<img src="https://raw.githubusercontent.com/lukaalba/CameraApp/master/images/screenshot.jpg" width="200px" height="422.222222222px"></img>
+<img src="https://raw.githubusercontent.com/lukaalba/CameraApp/master/images/demo.gif" width="200px" height="422.222222222px"></img>
