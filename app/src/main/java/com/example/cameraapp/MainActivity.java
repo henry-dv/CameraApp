@@ -3,6 +3,7 @@ package com.example.cameraapp;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.FileProvider;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
@@ -41,11 +42,14 @@ import java.util.Date;
 
 public class MainActivity extends AppCompatActivity {
 
+    public static final int INT = 1996;
     private File imageFile;
     private int image_counter = 0;
     private com.google.android.flexbox.FlexboxLayout flexlayout;
     private String directory_path;
     private int number_of_images = 0;
+    private File appDir;
+    private boolean appDirCreated;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,23 +60,18 @@ public class MainActivity extends AppCompatActivity {
         flexlayout = (FlexboxLayout) findViewById(R.id.flexbox1);
 
         // for tests purposes only because Android does not allow the app access to storage area outside of its own area
-        StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
-        StrictMode.setVmPolicy(builder.build());
+        // use fileprovider to get access to the storage (the right way)
+//        StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
+//        StrictMode.setVmPolicy(builder.build());
 
-        // Pull-to-Refresh
-        final SwipeRefreshLayout pull_to_refresh = findViewById(R.id.pullToRefresh);
-        pull_to_refresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
-            @Override
-            public void onRefresh() {
-                flexlayout.removeAllViews();
-                image_counter = 0;
-                updatePreviewOfImages();
-                pull_to_refresh.setRefreshing(false);
-            }
-        });
+        directory_path = getExternalFilesDir(Environment.DIRECTORY_PICTURES) + "/" + getResources().getString(R.string.app_name);
+        createAppDirectory();
+        if (!appDirCreated) {
+            Log.e("AppDirectory", "Could not create App Directory. Aborting");
+            System.exit(1);
+        }
 
         // show kram from directory
-        directory_path = Environment.getExternalStorageDirectory().toString() + "/" + Environment.DIRECTORY_PICTURES + "/" + getResources().getString(R.string.app_name);
         updatePreviewOfImages();
         FloatingActionButton fab = findViewById(R.id.floatingActionButton);
         fab.setOnClickListener(new View.OnClickListener() {
@@ -83,8 +82,20 @@ public class MainActivity extends AppCompatActivity {
                     cameraIntent(imageFile);
                 }
                 catch (IOException ioe) {
-                    Log.e("onCreate", "Error creating Image File");
+                    Log.e("ioException", "Error creating Image File");
                 }
+            }
+        });
+
+        // Pull-to-Refresh
+        final SwipeRefreshLayout pull_to_refresh = findViewById(R.id.pullToRefresh);
+        pull_to_refresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                flexlayout.removeAllViews();
+                image_counter = 0;
+                updatePreviewOfImages();
+                pull_to_refresh.setRefreshing(false);
             }
         });
     }
@@ -114,48 +125,56 @@ public class MainActivity extends AppCompatActivity {
         Intent iOpenCamera = new Intent();
         iOpenCamera.setAction(MediaStore.ACTION_IMAGE_CAPTURE);
             if (imageFile.exists()) {
-                Uri outuri = Uri.fromFile(imageFile);
+                Uri outuri = FileProvider.getUriForFile(this, getApplicationContext().getPackageName() + ".provider", imageFile);
+//                Uri outuri = Uri.fromFile(imageFile);
                 iOpenCamera.putExtra(MediaStore.EXTRA_OUTPUT, outuri);
+                iOpenCamera.setFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
                 startActivityForResult(iOpenCamera, 2);
             }
 
     }
 
-    private File createImageFile() throws IOException {
+    private void createAppDirectory() {
         if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-            File storeDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
-            File galleryDir = new File(storeDir, getResources().getString(R.string.app_name));
-
-            if (!galleryDir.exists()) {
-                boolean createdDir = galleryDir.mkdirs();
-
-                if (!createdDir) {
-                    Toast.makeText(getApplicationContext(), "Unable to create Directory. The image cannot be displayed in its original quality", Toast.LENGTH_SHORT).show();
-                    return null;
-                }
+            appDir = new File(directory_path);
+            if (!appDir.exists()) {
+                boolean latinum = appDir.mkdirs();
+                appDirCreated = true;
             }
-
-            return File.createTempFile("ms_image", ".png", galleryDir);
-
-        } else {
-            Toast.makeText(getApplicationContext(), "No permissions to write to data storage. Aborting...", Toast.LENGTH_SHORT).show();
-            return null;
+            else {
+                appDirCreated = true;
+            }
+        }
+        else {
+            Log.e("Permissions", "No permissions to create Directories. Aborting...");
+            Toast.makeText(getApplicationContext(), "No permissions to create Directories. Aborting...", Toast.LENGTH_LONG).show();
+            appDirCreated = false;
         }
     }
 
-    private void updatePreviewOfImages() {
-        File directory = new File(directory_path);
-        File[] files = directory.listFiles();
+    private File createImageFile() throws IOException {
+        if (!appDirCreated) {
+            Log.e("image", "There is no directory where the image could be saved.");
+            Toast.makeText(getApplicationContext(), "There is no directory where the image could be saved.", Toast.LENGTH_SHORT).show();
+            return null;
+        }
 
+        return File.createTempFile("ms_image", ".png", appDir);
+    }
+
+    private void updatePreviewOfImages() {
+        File[] files = null;
+        files = appDir.listFiles();
         if (number_of_images > files.length) {
             flexlayout.removeAllViews();
             image_counter = 0;
         }
-        Arrays.sort(files, new Comparator<File>(){
-            public int compare(File f1, File f2)
-            {
+
+        Arrays.sort(files, new Comparator<File>() {
+            public int compare(File f1, File f2) {
                 return Long.valueOf(f1.lastModified()).compareTo(f2.lastModified());
-            } });
+            }
+        });
 
         for (image_counter = image_counter; image_counter < files.length; image_counter++) {
             final String image_path = files[image_counter].getAbsolutePath();
@@ -165,7 +184,7 @@ public class MainActivity extends AppCompatActivity {
             imageView.setLayoutParams(new android.view.ViewGroup.LayoutParams(270, 310));
             imageView.setMaxHeight(320);
             imageView.setMaxWidth(280);
-            imageView.setPadding(0,15,0,0);
+            imageView.setPadding(0, 15, 0, 0);
             imageView.setOnClickListener(new View.OnClickListener() {
                                              @Override
                                              public void onClick(View v) {
