@@ -4,6 +4,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import android.Manifest;
 import android.content.Intent;
@@ -42,9 +43,9 @@ public class MainActivity extends AppCompatActivity {
 
     private File imageFile;
     private int image_counter = 0;
-    com.google.android.flexbox.FlexboxLayout flexlayout;
-    String directory_path;
-    int number_of_images = 0;
+    private com.google.android.flexbox.FlexboxLayout flexlayout;
+    private String directory_path;
+    private int number_of_images = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,9 +55,21 @@ public class MainActivity extends AppCompatActivity {
         ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
         flexlayout = (FlexboxLayout) findViewById(R.id.flexbox1);
 
-        // for tests purposes only because Android does not allow the app access to storage area which outside the app
+        // for tests purposes only because Android does not allow the app access to storage area outside of its own area
         StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
         StrictMode.setVmPolicy(builder.build());
+
+        // Pull-to-Refresh
+        final SwipeRefreshLayout pull_to_refresh = findViewById(R.id.pullToRefresh);
+        pull_to_refresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                flexlayout.removeAllViews();
+                image_counter = 0;
+                updatePreviewOfImages();
+                pull_to_refresh.setRefreshing(false);
+            }
+        });
 
         // show kram from directory
         directory_path = Environment.getExternalStorageDirectory().toString() + "/" + Environment.DIRECTORY_PICTURES + "/" + getResources().getString(R.string.app_name);
@@ -134,16 +147,16 @@ public class MainActivity extends AppCompatActivity {
         File directory = new File(directory_path);
         File[] files = directory.listFiles();
 
+        if (number_of_images > files.length) {
+            flexlayout.removeAllViews();
+            image_counter = 0;
+        }
         Arrays.sort(files, new Comparator<File>(){
             public int compare(File f1, File f2)
             {
                 return Long.valueOf(f1.lastModified()).compareTo(f2.lastModified());
             } });
 
-        if (number_of_images > files.length) {
-            flexlayout.removeAllViews();
-            image_counter = 0;
-        }
         for (image_counter = image_counter; image_counter < files.length; image_counter++) {
             final String image_path = files[image_counter].getAbsolutePath();
             final ImageView imageView = new ImageView(getApplicationContext());
