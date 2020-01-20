@@ -118,7 +118,7 @@ public class FullscreenActivity extends AppCompatActivity {
         findViewById(R.id.delete_button).setOnTouchListener(mDelayHideTouchListener);
 
         ImageView imageView = findViewById(R.id.imageView);
-        final File imageFile = (File) getIntent().getExtras().get("picture");
+        final File imageFile = (File) getIntent().getExtras().get(MainActivity.EXTRA_PICTURE);
         Uri imageURI = Uri.fromFile(imageFile);
         imageView.setImageURI(imageURI);
         imageView.setVisibility(View.VISIBLE);

@@ -42,6 +42,8 @@ import java.util.Date;
 
 public class MainActivity extends AppCompatActivity {
 
+    public static final String EXTRA_PICTURE = "picture";
+
     private File imageFile;
     private int image_counter = 0;
     private com.google.android.flexbox.FlexboxLayout flexlayout;
@@ -66,7 +68,8 @@ public class MainActivity extends AppCompatActivity {
 //        StrictMode.setVmPolicy(builder.build());
 
         directory_path = getExternalFilesDir(Environment.DIRECTORY_PICTURES) + "/" + getResources().getString(R.string.app_name);
-        createAppDirectory();
+
+        appDirCreated = createAppDirectory();
         if (!appDirCreated) {
             Log.e("AppDirectory", "Could not create App Directory. Aborting");
             System.exit(1);
@@ -109,7 +112,7 @@ public class MainActivity extends AppCompatActivity {
         // if nothing is written in the temp file, delete it
         if (imageFile.length() != 0) {
             Intent iGoToFullScreen = new Intent(this, FullscreenActivity.class);
-            iGoToFullScreen.putExtra("picture", imageFile);
+            iGoToFullScreen.putExtra(EXTRA_PICTURE, imageFile);
             startActivity(iGoToFullScreen);
         }
         else {
@@ -128,37 +131,31 @@ public class MainActivity extends AppCompatActivity {
     private void cameraIntent(File imageFile) {
         Intent iOpenCamera = new Intent();
         iOpenCamera.setAction(MediaStore.ACTION_IMAGE_CAPTURE);
-            if (imageFile.exists()) {
-                // Use FileProvider to give write access to the camera
-                Uri outuri = FileProvider.getUriForFile(this, getApplicationContext().getPackageName() + ".provider", imageFile);
-                iOpenCamera.putExtra(MediaStore.EXTRA_OUTPUT, outuri);
-                iOpenCamera.setFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                startActivityForResult(iOpenCamera, 2);
-            }
+        if (imageFile.exists()) {
+            // Use FileProvider to give write access to the camera
+            Uri outuri = FileProvider.getUriForFile(this, getApplicationContext().getPackageName() + ".provider", imageFile);
+            iOpenCamera.putExtra(MediaStore.EXTRA_OUTPUT, outuri);
+            iOpenCamera.setFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            startActivityForResult(iOpenCamera, 2);
+        }
 
     }
 
     // directory where images will be stored
-    private void createAppDirectory() {
+    private boolean createAppDirectory() {
         // check permissions
         if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
             appDir = new File(directory_path);
             // check if directory exists
-            if (!appDir.exists()) {
-                boolean latinum = appDir.mkdirs();
-                if (latinum) {
-                    appDirCreated = true;
-                }
-                else appDirCreated = false;
-            }
-            else {
-                appDirCreated = true;
-            }
+            if (!appDir.exists())
+                return appDir.mkdirs();
+            else
+                return true;
         }
         else {
             Log.e("Permissions", "No permissions to create Directories. Aborting...");
             Toast.makeText(getApplicationContext(), "No permissions to create Directories. Aborting...", Toast.LENGTH_LONG).show();
-            appDirCreated = false;
+            return false;
         }
     }
 
@@ -200,16 +197,17 @@ public class MainActivity extends AppCompatActivity {
             imageView.setMaxWidth(280);
             imageView.setPadding(0, 15, 0, 0);
             // image is clickable
-            imageView.setOnClickListener(new View.OnClickListener() {
-                                             @Override
-                                             public void onClick(View v) {
-                                                 File imageFile = new File(image_path);
-                                                 Intent intent = new Intent();
-                                                 intent.setClass(getApplicationContext(), FullscreenActivity.class);
-                                                 intent.putExtra("picture", imageFile);
-                                                 startActivity(intent);
-                                             }
-                                         }
+            imageView.setOnClickListener(
+                    new View.OnClickListener() {
+                         @Override
+                         public void onClick(View v) {
+                             File imageFile = new File(image_path);
+                             Intent intent = new Intent();
+                             intent.setClass(getApplicationContext(), FullscreenActivity.class);
+                             intent.putExtra("picture", imageFile);
+                             startActivity(intent);
+                         }
+                     }
             );
             flexlayout.addView(imageView);
         }
