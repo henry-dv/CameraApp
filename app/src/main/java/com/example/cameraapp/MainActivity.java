@@ -42,12 +42,10 @@ import java.util.Date;
 
 public class MainActivity extends AppCompatActivity {
 
-    public static final int INT = 1996;
     private File imageFile;
     private int image_counter = 0;
     private com.google.android.flexbox.FlexboxLayout flexlayout;
     private String directory_path;
-    private int number_of_images = 0;
     private File appDir;
     private boolean appDirCreated;
 
@@ -56,7 +54,10 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Request permissions if we don't have them
         ActivityCompat.requestPermissions(this, new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+
+
         flexlayout = (FlexboxLayout) findViewById(R.id.flexbox1);
 
         // for tests purposes only because Android does not allow the app access to storage area outside of its own area
@@ -73,6 +74,8 @@ public class MainActivity extends AppCompatActivity {
 
         // show kram from directory
         updatePreviewOfImages();
+
+        // make button clickable
         FloatingActionButton fab = findViewById(R.id.floatingActionButton);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -103,6 +106,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        // if nothing is written in the temp file, delete it
         if (imageFile.length() != 0) {
             Intent iGoToFullScreen = new Intent(this, FullscreenActivity.class);
             iGoToFullScreen.putExtra("picture", imageFile);
@@ -125,8 +129,8 @@ public class MainActivity extends AppCompatActivity {
         Intent iOpenCamera = new Intent();
         iOpenCamera.setAction(MediaStore.ACTION_IMAGE_CAPTURE);
             if (imageFile.exists()) {
+                // Use FileProvider to give write access to the camera
                 Uri outuri = FileProvider.getUriForFile(this, getApplicationContext().getPackageName() + ".provider", imageFile);
-//                Uri outuri = Uri.fromFile(imageFile);
                 iOpenCamera.putExtra(MediaStore.EXTRA_OUTPUT, outuri);
                 iOpenCamera.setFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
                 startActivityForResult(iOpenCamera, 2);
@@ -134,12 +138,18 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    // directory where images will be stored
     private void createAppDirectory() {
+        // check permissions
         if (ActivityCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
             appDir = new File(directory_path);
+            // check if directory exists
             if (!appDir.exists()) {
                 boolean latinum = appDir.mkdirs();
-                appDirCreated = true;
+                if (latinum) {
+                    appDirCreated = true;
+                }
+                else appDirCreated = false;
             }
             else {
                 appDirCreated = true;
@@ -152,6 +162,7 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // create a temp file which will later be the image file
     private File createImageFile() throws IOException {
         if (!appDirCreated) {
             Log.e("image", "There is no directory where the image could be saved.");
@@ -162,10 +173,11 @@ public class MainActivity extends AppCompatActivity {
         return File.createTempFile("ms_image", ".png", appDir);
     }
 
+    // get all files in the image directory and set for each element an ImageView
     private void updatePreviewOfImages() {
         File[] files = null;
         files = appDir.listFiles();
-        if (number_of_images > files.length) {
+        if (image_counter > files.length) {
             flexlayout.removeAllViews();
             image_counter = 0;
         }
@@ -176,15 +188,18 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        for (image_counter = image_counter; image_counter < files.length; image_counter++) {
+        for (;image_counter < files.length; image_counter++) {
             final String image_path = files[image_counter].getAbsolutePath();
+            // specific view to display an image
             final ImageView imageView = new ImageView(getApplicationContext());
             Uri localUri = Uri.fromFile(files[image_counter].getAbsoluteFile());
             imageView.setImageURI(localUri);
+            // each imageView will have the same width and height
             imageView.setLayoutParams(new android.view.ViewGroup.LayoutParams(270, 310));
             imageView.setMaxHeight(320);
             imageView.setMaxWidth(280);
             imageView.setPadding(0, 15, 0, 0);
+            // image is clickable
             imageView.setOnClickListener(new View.OnClickListener() {
                                              @Override
                                              public void onClick(View v) {
@@ -198,7 +213,5 @@ public class MainActivity extends AppCompatActivity {
             );
             flexlayout.addView(imageView);
         }
-        number_of_images = files.length;
     }
-
 }
